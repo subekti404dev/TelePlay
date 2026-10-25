@@ -62,8 +62,8 @@ services:
 
       # Web URL
       WEB_BASE_URL: ${WEB_BASE_URL:-http://localhost}
-    ports:
-      - "${BACKEND_PORT:-8000}:8000"
+   # ports:
+   #   - "${BACKEND_PORT:-8000}:8000"
     volumes:
       # Persist Telegram session files only (do not mount over /app — that hides rebuilt code)
       - telegram_session:/app/session
@@ -78,8 +78,8 @@ services:
     restart: unless-stopped
     depends_on:
       - backend
-    ports:
-      - "${WEB_PORT:-80}:80"
+   # ports:
+   #   - "${WEB_PORT:-80}:80"
     networks:
       - telegram-tv-network
 
