@@ -5,6 +5,7 @@ import { useEffect, useCallback, useRef, useState } from 'react';
 import { FolderPlus, Grid, List, Search, ChevronRight, Home, RefreshCw, Clipboard, ArrowUp, Film, Music, Image as ImageIcon, FileText, Menu } from 'lucide-react';
 import { useFiles, useFolders, useUpdateFile, useUpdateFolder, useDeleteFolder, useDeleteFiles, useMoveFiles, TelegramFile, Folder, useRecentFiles, useContinueWatching, useDeleteFolders, useMoveFolders } from '../lib/api';
 import { useAppStore } from '../lib/store';
+import { useQueryClient } from '@tanstack/react-query';
 import FileCard from './FileCard';
 import FolderCard from './FolderCard';
 import NewFolderModal from './NewFolderModal';
@@ -52,6 +53,7 @@ export default function FileBrowser() {
         addToast,
         setSelectedFiles
     } = useAppStore();
+    const queryClient = useQueryClient();
 
     // Pagination state
     const [page, setPage] = useState(1);
@@ -64,17 +66,21 @@ export default function FileBrowser() {
     const { data: cwFiles, isLoading: cwLoading, refetch: refetchCW } = useContinueWatching(50);
     
 
-    // For files section, accumulate files from all pages
+    // Page 1 always replaces the list (initial load, folder switch, refresh) so server-side
+    // renames/deletes/ordering show up; later pages are appended for infinite scrolling.
     useEffect(() => {
-        if (filesList && activeSection === 'files') {
+        if (!filesList || activeSection !== 'files') return;
+        if (page === 1) {
+            setAllFiles(filesList.files);
+        } else {
             setAllFiles(prev => {
                 const existingIds = new Set(prev.map(f => f.id));
                 const newFiles = filesList.files.filter(f => !existingIds.has(f.id));
-                return [...prev, ...newFiles];
+                return newFiles.length > 0 ? [...prev, ...newFiles] : prev;
             });
-            setHasMore(filesList.page * filesList.per_page < filesList.total);
         }
-    }, [filesList, activeSection]);
+        setHasMore(filesList.page * filesList.per_page < filesList.total);
+    }, [filesList, activeSection, page]);
 
     // Determine which files to show
     let displayFiles: TelegramFile[] | undefined;
@@ -115,14 +121,22 @@ export default function FileBrowser() {
     // handle refresh
     const handleRefresh = useCallback(() => {
         if (activeSection === 'files') {
-            refetchFiles();
+            // Page 1 replaces allFiles when the refetch lands, so stale rows disappear.
+            if (page === 1) {
+                refetchFiles();
+            } else {
+                // Jump back to page 1 and force a network fetch even if its cache is still fresh.
+                setPage(1);
+                queryClient.invalidateQueries({ queryKey: ['files', currentFolderId], refetchType: 'all' });
+            }
             refetchFolders();
         } else if (activeSection === 'recent') {
             refetchRecent();
         } else if (activeSection === 'continue_watching') {
             refetchCW();
         }
-    }, [activeSection, refetchFiles, refetchFolders, refetchRecent, refetchCW]);
+        addToast('Refreshed', 'info');
+    }, [activeSection, page, refetchFiles, refetchFolders, refetchRecent, refetchCW, queryClient, currentFolderId, addToast]);
 
     // Handle drag-drop file to folder
     const handleFileDrop = useCallback(async (fileId: number, folderId: number) => {

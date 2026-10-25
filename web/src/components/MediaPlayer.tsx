@@ -4,6 +4,7 @@
 import { useRef, useEffect, useState, useCallback } from 'react';
 import { X, Play, Pause, Volume2, VolumeX, Maximize, Minimize, SkipBack, SkipForward, Download, ExternalLink, AlertTriangle, Copy, PictureInPicture2, Gauge, ChevronDown, ChevronUp } from 'lucide-react';
 import { TelegramFile, formatDuration, useUpdateProgress, useFile, api } from '../lib/api';
+import { copyText } from '../lib/clipboard';
 import { useAppStore } from '../lib/store';
 
 export default function MediaPlayer() {
@@ -37,6 +38,7 @@ function MediaPlayerContent({ file, onClose, isMinimized, setMinimized }: MediaP
     const [error, setError] = useState<string | null>(null);
     const hideControlsTimeout = useRef<ReturnType<typeof setTimeout>>();
     const [publicUrl, setPublicUrl] = useState<string | null>(null);
+    const [urlCopied, setUrlCopied] = useState(false);
 
     // Fetch fresh file details to get latest progress
     const { data: extendedFile } = useFile(file.id);
@@ -346,11 +348,17 @@ function MediaPlayerContent({ file, onClose, isMinimized, setMinimized }: MediaP
                             </a>
                             <div className="flex gap-3">
                                 <Button
-                                    onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(externalUrl); }}
+                                    onClick={async (e) => {
+                                        e.stopPropagation();
+                                        if (await copyText(externalUrl)) {
+                                            setUrlCopied(true);
+                                            setTimeout(() => setUrlCopied(false), 2000);
+                                        }
+                                    }}
                                     className="flex-1 btn-secondary flex items-center justify-center gap-2"
                                 >
                                     <Copy className="w-4 h-4" />
-                                    Copy URL
+                                    {urlCopied ? 'Copied!' : 'Copy URL'}
                                 </Button>
                                 <a
                                     href={externalUrl}

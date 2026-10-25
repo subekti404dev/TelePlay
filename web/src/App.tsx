@@ -1,6 +1,7 @@
 import { Routes, Route, Navigate, useSearchParams, useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { useCurrentUser, useLoginWithCode, useBotInfo, useGenerateLoginCode, useVerifyLoginCode } from './lib/api';
+import { copyText } from './lib/clipboard';
 import FileBrowser from './components/FileBrowser';
 import GlobalContextMenu from './components/GlobalContextMenu';
 import logo from './assets/logo.png';
@@ -55,9 +56,11 @@ function AuthCallback() {
                     <div className="mt-4 p-4 bg-dark-800 rounded-lg text-left">
                         <p className="text-dark-400 text-sm mb-2">Token received (click to copy):</p>
                         <button
-                            onClick={() => {
-                                navigator.clipboard.writeText(token);
-                                setStatus('Token copied! Open browser DevTools console and run:\nlocalStorage.setItem("access_token", "paste-token-here")');
+                            onClick={async () => {
+                                const copied = await copyText(token);
+                                setStatus(copied
+                                    ? 'Token copied! Open browser DevTools console and run:\nlocalStorage.setItem("access_token", "paste-token-here")'
+                                    : 'Copy failed — select the token above and copy it manually.');
                             }}
                             className="text-xs text-primary-400 break-all text-left hover:text-primary-300"
                         >

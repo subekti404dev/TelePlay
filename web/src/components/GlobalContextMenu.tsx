@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { useAppStore } from '../lib/store';
 import { TelegramFile, Folder, api } from '../lib/api';
+import { copyText } from '../lib/clipboard';
 import { Play, Download, Link, Edit, FolderInput, Trash2, Globe, ShieldOff, HardDriveDownload } from 'lucide-react';
 
 export default function GlobalContextMenu() {
-    const { activeContextMenu, setActiveContextMenu, setPreviewFile, setMoveItems, setMoveFiles, setDeleteConfirm, setRenameFile, setRenameFolder, selectedFileIds, selectedFiles } = useAppStore();
+    const { activeContextMenu, setActiveContextMenu, setPreviewFile, setMoveItems, setMoveFiles, setDeleteConfirm, setRenameFile, setRenameFolder, selectedFileIds, selectedFiles, addToast } = useAppStore();
     const menuRef = useRef<HTMLDivElement>(null);
     const [copiedId, setCopiedId] = useState<string | null>(null);
 
@@ -54,12 +55,11 @@ export default function GlobalContextMenu() {
     };
 
     const handleCopy = async (text: string, id: string) => {
-        try {
-            await navigator.clipboard.writeText(text);
+        if (await copyText(text)) {
             setCopiedId(id);
             setTimeout(() => setCopiedId(null), 2000);
-        } catch (err) {
-            console.error('Failed to copy:', err);
+        } else {
+            addToast('Could not copy — select the text and copy manually', 'error');
         }
     };
 
